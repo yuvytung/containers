@@ -7,11 +7,17 @@ Trademarks: This software listing is packaged by Bitnami. The respective tradema
 
 ## TL;DR
 
-Use this quick command to run the container.
-
 ```console
 docker run -it --name nats bitnami/nats:latest
 ```
+
+## Using `docker-compose.yml`
+
+The docker-compose.yaml file of this container can be found in the [Bitnami Containers repository](https://github.com/bitnami/containers/).
+
+[https://github.com/bitnami/containers/tree/main/bitnami/nats/docker-compose.yml](https://github.com/bitnami/containers/tree/main/bitnami/nats/docker-compose.yml)
+
+Please be aware this file has not undergone internal testing. Consequently, we advise its use exclusively for development or testing purposes. For production-ready deployments, we highly recommend utilizing its associated [Bitnami Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/nats).
 
 ## Why use Bitnami Secure Images?
 
@@ -44,111 +50,7 @@ Learn more about the Bitnami tagging policy and the difference between rolling t
 
 ## Get this image
 
-The recommended way to get the Bitnami NATS Docker Image is to pull the prebuilt image from the [Docker Hub Registry](https://hub.docker.com/r/bitnami/nats).
-
-```console
-docker pull bitnami/nats:latest
-```
-
-To use a specific version, you can pull a versioned tag. You can view the
-[list of available versions](https://hub.docker.com/r/bitnami/nats/tags/)
-in the Docker Hub Registry.
-
-```console
-docker pull bitnami/nats:[TAG]
-```
-
-If you wish, you can also build the image yourself by cloning the repository, changing to the directory containing the Dockerfile and executing the `docker build` command. Remember to replace the `APP`, `VERSION` and `OPERATING-SYSTEM` path placeholders in the example command below with the correct values.
-
-```console
-git clone https://github.com/bitnami/containers.git
-cd bitnami/APP/VERSION/OPERATING-SYSTEM
-docker build -t bitnami/APP:latest .
-```
-
-## Using `docker-compose.yaml`
-
-Please be aware this file has not undergone internal testing. Consequently, we advise its use exclusively for development or testing purposes. For production-ready deployments, we highly recommend utilizing its associated [Bitnami Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/nats).
-
-## Connecting to other containers
-
-Using [Docker container networking](https://docs.docker.com/engine/userguide/networking/), a NATS server running inside a container can easily be accessed by your application containers using a NATS client.
-
-Containers attached to the same network can communicate with each other using the container name as the host name.
-
-### Using the command line
-
-In this example, we will create a NATS client instance that will connect to the server instance that is running on the same docker network as the client.
-
-1. Create a network
-
-    ```console
-    docker network create app-tier --driver bridge
-    ```
-
-2. Launch the NATS server instance
-
-    Use the `--network app-tier` argument to the `docker run` command to attach the NATS container to the `app-tier` network.
-
-    ```console
-    docker run -d --name nats-server \
-        --network app-tier \
-        --publish 4222:4222 \
-        --publish 6222:6222 \
-        --publish 8222:8222 \
-        --volume /path/to/nats-server.conf:/etc/nats-server.conf:ro \
-        bitnami/nats:latest -c /etc/nats-server.conf
-    ```
-
-3. Launch your NATS client instance
-
-You can create a NATS client instance as shown below:
-
-```console
-docker run -it --rm \
-    --network app-tier \
-    --volume /path/to/your/workspace:/go \
-    bitnami/natscli -s nats://nats-server:4222 <your-nats-command>
-```
-
-### Using a Docker Compose file
-
-When not specified, Docker Compose automatically sets up a new network and attaches all deployed services to that network. However, we will explicitly define a new `bridge` network named `app-tier`. In this example we assume that you want to connect to the NATS server from your own custom application image which is identified in the following snippet by the service name `myapp`.
-
-```yaml
-version: '2'
-
-networks:
-  app-tier:
-    driver: bridge
-
-services:
-  nats:
-    image: bitnami/nats:latest
-    ports:
-      - 4222:4222
-      - 6222:6222
-      - 8222:8222
-    networks:
-      - app-tier
-    volumes:
-      - /path/to/nats-server.conf:/etc/nats-server.conf:ro
-  myapp:
-    image: YOUR_APPLICATION_IMAGE
-    networks:
-      - app-tier
-```
-
-> **Important** 
-> 
-> 1. Update the `YOUR_APPLICATION_IMAGE` placeholder in the above snippet with your application image. 
-> 2. In your application container, use the host name `nats` to connect to the NATS server.
-
-Launch the containers using:
-
-```console
-docker-compose up -d
-```
+The Bitnami NATS Docker image is only available to [Bitnami Secure Images](https://bitnami.com) customers.
 
 ## Configuration
 
@@ -179,6 +81,13 @@ The following subsections describe notable changes.
 ### 2.6.4-debian-10-r14
 
 - The configuration logic is now based on Bash scripts in the *rootfs/* folder.
+
+### FIPS configuration in Bitnami Secure Images
+
+The Bitnami NATS Docker image from the [Bitnami Secure Images](https://go-vmware.broadcom.com/contact-us) catalog includes extra features and settings to configure the container with FIPS capabilities. You can configure the next environment variables:
+
+- `OPENSSL_FIPS`: whether OpenSSL runs in FIPS mode or not. `yes` (default), `no`.
+- `GODEBUG`: controls Go FIPS mode. Use `fips140=only` (restricted), `fips140=on` (relaxed), or `fips140=off` (disabled).
 
 ## License
 

@@ -42,27 +42,7 @@ Learn more about the Bitnami tagging policy and the difference between rolling t
 
 ## Get this image
 
-The recommended way to get the Bitnami NGINX Open Source Docker Image is to pull the prebuilt image from the [Docker Hub Registry](https://hub.docker.com/r/bitnami/nginx).
-
-```console
-docker pull bitnami/nginx:latest
-```
-
-To use a specific version, you can pull a versioned tag. You can view the
-[list of available versions](https://hub.docker.com/r/bitnami/nginx/tags/)
-in the Docker Hub Registry.
-
-```console
-docker pull bitnami/nginx:[TAG]
-```
-
-If you wish, you can also build the image yourself by cloning the repository, changing to the directory containing the Dockerfile and executing the `docker build` command. Remember to replace the `APP`, `VERSION` and `OPERATING-SYSTEM` path placeholders in the example command below with the correct values.
-
-```console
-git clone https://github.com/bitnami/containers.git
-cd bitnami/APP/VERSION/OPERATING-SYSTEM
-docker build -t bitnami/APP:latest .
-```
+The Bitnami NGINX Open Source Docker image is only available to [Bitnami Secure Images](https://bitnami.com) customers.
 
 ## Using `docker-compose.yaml`
 
@@ -279,6 +259,16 @@ services:
   ...
 ```
 
+### Configuring worker processes
+
+By default, the image configures `worker_processes` as `auto`. You can override this behavior by setting the `NGINX_WORKER_PROCESSES` environment variable to a positive integer (for example, `1`).
+
+```console
+docker run --name nginx --rm \
+  -e NGINX_WORKER_PROCESSES=1 \
+  bitnami/nginx:latest
+```
+
 ### Solving redirection issues
 
 By default redirections issued by NGINX Open Source image will be relative. If you need to activate absolute redirections you can set `NGINX_ENABLE_ABSOLUTE_REDIRECT` to `yes`. You should pay attention to the port where the container is listening, because it won't appear in redirections unless you set also `NGINX_ENABLE_PORT_IN_REDIRECT` to `yes`.
@@ -477,6 +467,10 @@ To add a custom NGINX module, it is necessary to compile NGINX with that module 
 - [Create An EMP Development Environment With Bitnami Containers](https://docs.bitnami.com/containers/how-to/create-emp-environment-containers/)
 
 ## Notable Changes
+
+### Starting March, 2026
+
+- Added support for configuring the `worker_processes` directive using the `NGINX_WORKER_PROCESSES` environment variable (allowed values: `auto` or a positive integer).
 
 ### Starting February 10, 2025
 

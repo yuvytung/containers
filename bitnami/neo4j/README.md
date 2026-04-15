@@ -38,25 +38,7 @@ Learn more about the Bitnami tagging policy and the difference between rolling t
 
 ## Get this image
 
-The recommended way to get the Bitnami Neo4j Docker Image is to pull the prebuilt image from the [Docker Hub Registry](https://hub.docker.com/r/bitnami/neo4j).
-
-```console
-docker pull bitnami/neo4j:latest
-```
-
-To use a specific version, you can pull a versioned tag. You can view the [list of available versions](https://hub.docker.com/r/bitnami/neo4j/tags/) in the Docker Hub Registry.
-
-```console
-docker pull bitnami/neo4j:[TAG]
-```
-
-If you wish, you can also build the image yourself by cloning the repository, changing to the directory containing the Dockerfile and executing the `docker build` command. Remember to replace the `APP`, `VERSION` and `OPERATING-SYSTEM` path placeholders in the example command below with the correct values.
-
-```console
-git clone https://github.com/bitnami/containers.git
-cd bitnami/APP/VERSION/OPERATING-SYSTEM
-docker build -t bitnami/APP:latest .
-```
+The Bitnami Neo4j Docker image is only available to [Bitnami Secure Images](https://bitnami.com) customers.
 
 ## Using `docker-compose.yaml`
 
@@ -104,6 +86,9 @@ The following tables list the main variables you can set.
 | `NEO4J_HTTPS_ADVERTISED_PORT_NUMBER`      | Advertised port for the https protocol.                                                                                                       | `$NEO4J_HTTPS_PORT_NUMBER` |
 | `NEO4J_HTTPS_ENABLED`                     | Enables the HTTPS connector.                                                                                                                  | `false`                    |
 | `NEO4J_BOLT_TLS_LEVEL`                    | The encryption level to be used to secure communications with Bolt connector. Allowed values: REQUIRED, OPTIONAL, DISABLED                    | `DISABLED`                 |
+| `NEO4J_HTTP_X_FORWARD_ENABLED`            | Enable processing of X-Forwarded-Host and X-Forwarded-Proto headers.                                                                          | `false`                    |
+| `NEO4J_HTTP_X_FORWARD_ALLOW_PROXIES`      | Enable processing of X-Forwarded-Host and X-Forwarded-Proto headers.                                                                          | `nil`                      |
+| `NEO4J_HTTP_X_FORWARD_ALLOW_HOSTS`        | List of allowed hostnames that can appear in X-Forwarded-Host header.                                                                         | `nil`                      |
 
 #### Read-only environment variables
 
