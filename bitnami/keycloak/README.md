@@ -7,13 +7,17 @@ Trademarks: This software listing is packaged by Bitnami. The respective tradema
 
 ## TL;DR
 
-Use this quick command to run the container.
-
 ```console
 docker run --name keycloak bitnami/keycloak:latest
 ```
 
-> **NOTE** This quick setup is only intended for development environments. You are encouraged to change the insecure default credentials and check out the available configuration options in the [Configuration](#configuration) section for a more secure deployment.
+## Using `docker-compose.yml`
+
+The docker-compose.yaml file of this container can be found in the [Bitnami Containers repository](https://github.com/bitnami/containers/).
+
+[https://github.com/bitnami/containers/tree/main/bitnami/keycloak/docker-compose.yml](https://github.com/bitnami/containers/tree/main/bitnami/keycloak/docker-compose.yml)
+
+Please be aware this file has not undergone internal testing. Consequently, we advise its use exclusively for development or testing purposes. For production-ready deployments, we highly recommend utilizing its associated [Bitnami Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/keycloak).
 
 ## Why use Bitnami Secure Images?
 
@@ -46,29 +50,7 @@ Learn more about the Bitnami tagging policy and the difference between rolling t
 
 ## Get this image
 
-The recommended way to get the Bitnami Keycloak Docker Image is to pull the prebuilt image from the [Docker Hub Registry](https://hub.docker.com/r/bitnami/keycloak).
-
-```console
-docker pull bitnami/keycloak:latest
-```
-
-To use a specific version, you can pull a versioned tag. You can view the [list of available versions](https://hub.docker.com/r/bitnami/keycloak/tags/) in the Docker Hub Registry.
-
-```console
-docker pull bitnami/keycloak:[TAG]
-```
-
-If you wish, you can also build the image yourself by cloning the repository, changing to the directory containing the Dockerfile and executing the `docker build` command. Remember to replace the `APP`, `VERSION` and `OPERATING-SYSTEM` path placeholders in the example command below with the correct values.
-
-```console
-git clone https://github.com/bitnami/containers.git
-cd bitnami/APP/VERSION/OPERATING-SYSTEM
-docker build -t bitnami/APP:latest .
-```
-
-## Using `docker-compose.yaml`
-
-Please be aware this file has not undergone internal testing. Consequently, we advise its use exclusively for development or testing purposes. For production-ready deployments, we highly recommend utilizing its associated [Bitnami Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/keycloak).
+The Bitnami Keycloak Docker image is only available to [Bitnami Secure Images](https://bitnami.com) customers.
 
 ## Configuration
 
@@ -172,15 +154,6 @@ docker run --name keycloak \
   bitnami/keycloak:latest
 ```
 
-Or with docker-compose
-
-```yaml
-keycloak:
-  image: bitnami/keycloak:latest
-  volumes:
-    - /path/to/init-scripts:/docker-entrypoint-initdb.d
-```
-
 ### TLS encryption
 
 The Bitnami Keycloak Docker image allows configuring HTTPS/TLS encryption. This is done by mounting in `/opt/bitnami/keycloak/certs` two files:
@@ -247,15 +220,6 @@ The image looks for configuration files in the `/bitnami/keycloak/conf/` directo
 docker run --name keycloak \
     -v /path/to/keycloak.conf:/bitnami/keycloak/conf/keycloak.conf \
     bitnami/keycloak:latest
-```
-
-Or with docker-compose
-
-```yaml
-keycloak:
-  image: bitnami/keycloak:latest
-  volumes:
-    - /path/to/keycloak.conf:/bitnami/keycloak/conf/keycloak.conf:ro
 ```
 
 After that, your changes will be taken into account in the server's behaviour.

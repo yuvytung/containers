@@ -11,7 +11,13 @@ Trademarks: This software listing is packaged by Bitnami. The respective tradema
 docker run --name ghost bitnami/ghost:latest
 ```
 
-**Warning**: This quick setup is only intended for development environments. You are encouraged to change the insecure default credentials and check out the available configuration options in the [Environment Variables](#environment-variables) section for a more secure deployment.
+## Using `docker-compose.yml`
+
+The docker-compose.yaml file of this container can be found in the [Bitnami Containers repository](https://github.com/bitnami/containers/).
+
+[https://github.com/bitnami/containers/tree/main/bitnami/ghost/docker-compose.yml](https://github.com/bitnami/containers/tree/main/bitnami/ghost/docker-compose.yml)
+
+Please be aware this file has not undergone internal testing. Consequently, we advise its use exclusively for development or testing purposes. For production-ready deployments, we highly recommend utilizing its associated [Bitnami Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/ghost).
 
 ## Why use Bitnami Secure Images?
 
@@ -44,25 +50,7 @@ Learn more about the Bitnami tagging policy and the difference between rolling t
 
 ## Get this image
 
-The recommended way to get the Bitnami Ghost Docker Image is to pull the prebuilt image from the [Docker Hub Registry](https://hub.docker.com/r/bitnami/ghost).
-
-```console
-docker pull bitnami/ghost:latest
-```
-
-To use a specific version, you can pull a versioned tag. You can view the [list of available versions](https://hub.docker.com/r/bitnami/ghost/tags/) in the Docker Hub Registry.
-
-```console
-docker pull bitnami/ghost:[TAG]
-```
-
-If you wish, you can also build the image yourself by cloning the repository, changing to the directory containing the Dockerfile and executing the `docker build` command. Remember to replace the `APP`, `VERSION` and `OPERATING-SYSTEM` path placeholders in the example command below with the correct values.
-
-```console
-git clone https://github.com/bitnami/containers.git
-cd bitnami/APP/VERSION/OPERATING-SYSTEM
-docker build -t bitnami/APP:latest .
-```
+The Bitnami Ghost Docker image is only available to [Bitnami Secure Images](https://bitnami.com) customers.
 
 ## How to use this image
 
@@ -136,8 +124,6 @@ The following tables list the main variables you can set.
 | `GHOST_DEFAULT_PORT_NUMBER`   | Default Ghost port number to enable at build time. | `2368`                                     |
 | `GHOST_DEFAULT_DATABASE_HOST` | Default database server host.                      | `mysql`                                    |
 
-When you start the Ghost image, you can adjust the configuration of the instance by passing one or more environment variables either on the docker-compose file or on the `docker run` command line.
-
 #### Examples
 
 ##### SMTP configuration
@@ -156,70 +142,7 @@ The Bitnami Ghost Docker image from the [Bitnami Secure Images](https://go-vmwar
 
 ## Logging
 
-The Bitnami Ghost Docker image sends the container logs to `stdout`. To view the logs:
-
-```console
-docker logs ghost
-```
-
-Or using Docker Compose:
-
-```console
-docker-compose logs ghost
-```
-
-You can configure the containers [logging driver](https://docs.docker.com/engine/admin/logging/overview/) using the `--log-driver` option if you wish to consume the container logs differently. In the default configuration docker uses the `json-file` driver.
-
-## Maintenance
-
-### Backing up your container
-
-To backup your data, configuration and logs, follow these simple steps:
-
-#### Step 1: Stop the currently running container
-
-```console
-docker stop ghost
-```
-
-Or using Docker Compose:
-
-```console
-docker-compose stop ghost
-```
-
-#### Step 2: Run the backup command
-
-We need to mount two volumes in a container we will use to create the backup: a directory on your host to store the backup in, and the volumes from the container we just stopped so we can access the data.
-
-```console
-docker run --rm -v /path/to/ghost-backups:/backups --volumes-from ghost busybox \
-  cp -a /bitnami/ghost /backups/latest
-```
-
-### Restoring a backup
-
-Restoring a backup is as simple as mounting the backup as volumes in the containers.
-
-For the MySQL database container:
-
-```diff
- $ docker run -d --name mysql \
-   ...
--  --volume /path/to/mysql-persistence:/bitnami/mysql \
-+  --volume /path/to/mysql-backups/latest:/bitnami/mysql \
-   bitnami/mysql:latest
-```
-
-For the Ghost container:
-
-```diff
- $ docker run -d --name ghost \
-   ...
--  --volume /path/to/ghost-persistence:/bitnami/ghost \
-+  --volume /path/to/ghost-backups/latest:/bitnami/ghost \
-   bitnami/ghost:latest
-```
+The Bitnami Ghost Docker image sends the container logs to the `stdout`. You can configure the containers [logging driver](https://docs.docker.com/engine/admin/logging/overview/) using the `--log-driver` option if you wish to consume the container logs differently. In the default configuration docker uses the `json-file` driver.
 
 ## Customize this image
 

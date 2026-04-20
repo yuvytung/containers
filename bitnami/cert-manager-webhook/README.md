@@ -12,8 +12,6 @@ Trademarks: This software listing is packaged by Bitnami. The respective tradema
 docker run --name cert-manager-webhook -e ALLOW_EMPTY_PASSWORD=yes bitnami/cert-manager-webhook:latest
 ```
 
-**Warning**: These quick setups are only intended for development environments. You are encouraged to change the insecure default credentials and check out the available configuration options in the [Configuration](#configuration) section for a more secure deployment.
-
 ## Before you begin
 
 Kubernetes cluster with `CustomResourceDefinition` or `ThirdPartyResource support`
@@ -56,6 +54,7 @@ For further documentation, please check [here](https://github.com/jetstack/cert-
 The Bitnami cert-manager Webhook Docker image from the [Bitnami Secure Images](https://go-vmware.broadcom.com/contact-us) catalog includes extra features and settings to configure the container with FIPS capabilities. You can configure the next environment variables:
 
 - `OPENSSL_FIPS`: whether OpenSSL runs in FIPS mode or not. `yes` (default), `no`.
+- `GODEBUG`: controls Go FIPS mode. Use `fips140=only` (restricted), `fips140=on` (relaxed), or `fips140=off` (disabled).
 
 ## Notable Changes
 

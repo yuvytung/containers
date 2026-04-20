@@ -7,13 +7,17 @@ Trademarks: This software listing is packaged by Bitnami. The respective tradema
 
 ## TL;DR
 
-Use this quick command to run the container.
-
 ```console
 docker run --name opensearch bitnami/opensearch:latest
 ```
 
-You can find the available configuration options in the [Environment Variables](#environment-variables) section.
+## Using `docker-compose.yml`
+
+The docker-compose.yaml file of this container can be found in the [Bitnami Containers repository](https://github.com/bitnami/containers/).
+
+[https://github.com/bitnami/containers/tree/main/bitnami/opensearch/docker-compose.yml](https://github.com/bitnami/containers/tree/main/bitnami/opensearch/docker-compose.yml)
+
+Please be aware this file has not undergone internal testing. Consequently, we advise its use exclusively for development or testing purposes. For production-ready deployments, we highly recommend utilizing its associated [Bitnami Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/opensearch).
 
 ## Why use Bitnami Secure Images?
 
@@ -46,29 +50,7 @@ Learn more about the Bitnami tagging policy and the difference between rolling t
 
 ## Get this image
 
-The recommended way to get the Bitnami OpenSearch Docker Image is to pull the prebuilt image from the [Docker Hub Registry](https://hub.docker.com/r/bitnami/opensearch).
-
-```console
-docker pull bitnami/opensearch:latest
-```
-
-To use a specific version, you can pull a versioned tag. You can view the [list of available versions](https://hub.docker.com/r/bitnami/opensearch/tags/) in the Docker Hub Registry.
-
-```console
-docker pull bitnami/opensearch:[TAG]
-```
-
-If you wish, you can also build the image yourself by cloning the repository, changing to the directory containing the Dockerfile and executing the `docker build` command. Remember to replace the `APP`, `VERSION` and `OPERATING-SYSTEM` path placeholders in the example command below with the correct values.
-
-```console
-git clone https://github.com/bitnami/containers.git
-cd bitnami/APP/VERSION/OPERATING-SYSTEM
-docker build -t bitnami/APP:latest .
-```
-
-## Using `docker-compose.yaml`
-
-Please be aware this file has not undergone internal testing. Consequently, we advise its use exclusively for development or testing purposes. For production-ready deployments, we highly recommend utilizing its associated [Bitnami Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/opensearch).
+The Bitnami OpenSearch Docker image is only available to [Bitnami Secure Images](https://bitnami.com) customers.
 
 ## Persisting your application
 
@@ -188,8 +170,6 @@ The following tables list the main variables you can set.
 | `OPENSEARCH_DAEMON_GROUP`        | Opensearch system group                                         | `opensearch`                     |
 | `OPENSEARCH_USERNAME`            | Username of the Opensearch superuser.                           | `admin`                          |
 
-When you start the opensearch image, you can adjust the configuration of the instance by passing one or more environment variables either on the docker-compose file or on the `docker run` command line.
-
 ### Setting up a cluster
 
 A cluster can easily be setup with the Bitnami OpenSearch Docker Image using the following environment variables:
@@ -218,17 +198,6 @@ docker run -d --name opensearch \
     -v /path/to/opensearch.yml:/opt/bitnami/opensearch/config/opensearch.yml \
     -v /path/to/opensearch-data-persistence:/bitnami/opensearch/data \
     bitnami/opensearch:latest
-```
-
-or by changing the [`docker-compose.yml`](https://github.com/bitnami/containers/blob/main/bitnami/opensearch/docker-compose.yml) file present in this repository:
-
-```yaml
-opensearch:
-  ...
-  volumes:
-    - /path/to/opensearch.yml:/opt/bitnami/opensearch/config/opensearch.yml
-    - /path/to/opensearch-data-persistence:/bitnami/opensearch/data
-  ...
 ```
 
 Please, note that the whole configuration file will be replaced by the provided, default one; ensure that the syntax and fields you provide are properly set and exhaustive.
@@ -272,25 +241,11 @@ In order to have your custom files inside the Docker image, you can mount them a
 The Bitnami OpenSearch Docker image from the [Bitnami Secure Images](https://go-vmware.broadcom.com/contact-us) catalog includes extra features and settings to configure the container with FIPS capabilities. You can configure the next environment variables:
 
 - `OPENSSL_FIPS`: whether OpenSSL runs in FIPS mode or not. `yes` (default), `no`.
+- `JAVA_TOOL_OPTIONS`: controls Java FIPS mode. Use `-Djava.security.properties==/opt/bitnami/java/conf/security/java.security.restricted` (restricted), `-Djava.security.properties==/opt/bitnami/java/conf/security/java.security.relaxed` (relaxed), or `-Djava.security.properties==/opt/bitnami/java/conf/security/java.security.original` (off).
 
 ## Logging
 
-The Bitnami OpenSearch Docker image sends the container logs to the `stdout`. To view the logs:
-
-```console
-docker logs opensearch
-```
-
-or using Docker Compose:
-
-```console
-docker-compose logs opensearch
-```
-
-You can configure the containers [logging driver](https://docs.docker.com/engine/admin/logging/overview/) using the `--log-driver` option if you wish to consume the container logs differently. In the default configuration docker uses the `json-file` driver.
-
-Additionally, in case you'd like to modify OpenSearch logging configuration, it can be done by overwriting the file `/opt/bitnami/opensearch/config/log4j2.properties`.
-The syntax of this file can be found in OpenSearch [logging documentation](https://www.elastic.co/guide/en/opensearch/reference/current/logging.html).
+The Bitnami OpenSearch Docker image sends the container logs to the `stdout`. You can configure the containers [logging driver](https://docs.docker.com/engine/admin/logging/overview/) using the `--log-driver` option if you wish to consume the container logs differently. In the default configuration docker uses the `json-file` driver.
 
 ## License
 
