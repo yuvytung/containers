@@ -32,16 +32,16 @@ couchdb_validate() {
         error "$1"
         error_code=1
     }
-
+    check_empty_value() {
+        if is_empty_value "${!1}"; then
+            print_validation_error "The $1 environment variable is empty or not set."
+        fi
+    }
     check_password_file() {
         if ! is_empty_value "${!1:-}" && ! [[ -f "${!1:-}" ]]; then
             print_validation_error "The variable $1 is defined but the file ${!1} is not accessible or does not exist."
         fi
     }
-
-    # CouchDB secret files validations
-    check_password_file COUCHDB_PASSWORD_FILE
-    check_password_file COUCHDB_SECRET_FILE
 
     # CouchDB authentication validations
     if is_boolean_yes "${ALLOW_ANONYMOUS_LOGIN:-}"; then
@@ -49,9 +49,13 @@ couchdb_validate() {
     elif ! is_empty_value "${ALLOW_ANONYMOUS_LOGIN:-}"; then
         warn "The usage of 'ALLOW_ANONYMOUS_LOGIN' is deprecated. It won't be taken into account."
     fi
+    check_empty_value COUCHDB_PASSWORD
+    check_password_file COUCHDB_PASSWORD_FILE
     if [[ "$COUCHDB_PASSWORD" = "couchdb" ]]; then
         warn "You set the environment variable COUCHDB_PASSWORD=couchdb. This is the default value when bootstrapping CouchDB and should not be used in production environments."
     fi
+    check_empty_value COUCHDB_SECRET
+    check_password_file COUCHDB_SECRET_FILE
 
     # CouchDB port validations
     for p in COUCHDB_PORT_NUMBER COUCHDB_CLUSTER_PORT_NUMBER; do
@@ -96,11 +100,15 @@ couchdb_initialize() {
         if is_boolean_yes "$COUCHDB_CREATE_DATABASES"; then
             couchdb_start_bg
             couchdb_create_initial_databases
-            couchdb_stop
         fi
+        couchdb_run_init_scripts
+        is_couchdb_running && couchdb_stop
     else
         info "Deploying CouchDB with persisted data"
     fi
+
+    # Avoid exit code of previous commands to affect the result of this function
+    true
 }
 
 ########################
@@ -116,10 +124,14 @@ couchdb_update_conf_file() {
     is_empty_value "$COUCHDB_PORT_NUMBER" || couchdb_conf_set "chttpd" "port" "$COUCHDB_PORT_NUMBER"
     is_empty_value "$COUCHDB_BIND_ADDRESS" || couchdb_conf_set "chttpd" "bind_address" "$COUCHDB_BIND_ADDRESS"
     couchdb_conf_set "admins" "$COUCHDB_USER" "$COUCHDB_PASSWORD" "${COUCHDB_CONF_DIR}/local.ini"
+    # Write to the volume-backed persistent conf (loaded last, highest precedence) so that password
+    # rotation takes effect on restarts with a new secret.
+    [[ -f "${COUCHDB_PERSISTENT_CONF_FILE:-}" ]] && couchdb_conf_set "admins" "$COUCHDB_USER" "$COUCHDB_PASSWORD" "${COUCHDB_PERSISTENT_CONF_FILE}"
     couchdb_conf_set "chttpd" "require_valid_user" "true"
     couchdb_conf_set "couch_httpd_auth" "require_valid_user" "true"
     couchdb_conf_set "httpd" "WWW-Authenticate" 'Basic realm="administrator"'
     is_empty_value "$COUCHDB_SECRET" || couchdb_conf_set "couch_httpd_auth" "secret" "$COUCHDB_SECRET"
+    is_empty_value "$COUCHDB_SECRET" || couchdb_conf_set "chttpd_auth" "secret" "$COUCHDB_SECRET"
 }
 
 ########################
@@ -131,11 +143,38 @@ couchdb_update_conf_file() {
 # Returns:
 #   None
 #########################
-couchdb_update_vm_args_file() { # TODO Confirm that works
+couchdb_update_vm_args_file() {
     couchdb_vm_args_set "-name" "$COUCHDB_NODENAME"
     couchdb_vm_args_set "-kernel inet_dist_listen_min" "$COUCHDB_CLUSTER_PORT_NUMBER"
     couchdb_vm_args_set "-kernel inet_dist_listen_max" "$COUCHDB_CLUSTER_PORT_NUMBER"
     couchdb_vm_args_set "-setcookie" "$COUCHDB_SECRET"
+    couchdb_vm_args_set "-kernel inet_dist_use_interface" "{0,0,0,0}"
+    if ! is_empty_value "${COUCHDB_ERLANG_HMAX:-}" && [ "${COUCHDB_ERLANG_HMAX}" -gt 0 ]; then
+        couchdb_vm_args_set "+hmax" "$((COUCHDB_ERLANG_HMAX / 8))"
+    fi
+    if is_boolean_yes "${COUCHDB_INTERNODE_TLS_ENABLED:-no}"; then
+        local ssl_dist_cfg="${COUCHDB_CONF_DIR}/ssl_dist.cfg"
+        cat > "${ssl_dist_cfg}" << EOF
+[{server,
+  [{certfile, "${COUCHDB_TLS_CERT_FILE}"},
+   {keyfile, "${COUCHDB_TLS_KEY_FILE}"},
+   {cacertfile, "${COUCHDB_TLS_CA_FILE}"},
+   {verify, verify_peer},
+   {fail_if_no_peer_cert, true}]},
+ {client,
+  [{certfile, "${COUCHDB_TLS_CERT_FILE}"},
+   {keyfile, "${COUCHDB_TLS_KEY_FILE}"},
+   {cacertfile, "${COUCHDB_TLS_CA_FILE}"},
+   {verify, verify_peer},
+   {server_name_indication, disable}]}].
+EOF
+        couchdb_vm_args_set "-proto_dist" "couch"
+        couchdb_vm_args_set "-couch_dist no_tls" "false"
+        couchdb_vm_args_set "-ssl_dist_optfile" "${ssl_dist_cfg}"
+    fi
+    if ! is_empty_value "${COUCHDB_EXTRA_VM_ARGS:-}"; then
+        echo "${COUCHDB_EXTRA_VM_ARGS}" >>"${COUCHDB_CONF_DIR}/vm.args"
+    fi
 }
 
 ########################
@@ -155,7 +194,7 @@ couchdb_vm_args_set() {
 
     if ! is_empty_value "$value"; then
         if grep -q -E "^\s*${key}\s+.*$" "${COUCHDB_CONF_DIR}/vm.args"; then
-            vm_args_content="$(sed -E "s/^\s*${key}\s+.*$/${key} ${value}/" "${COUCHDB_CONF_DIR}/vm.args")"
+            vm_args_content="$(sed -E "s|^\s*${key}\s+.*$|${key} ${value}|" "${COUCHDB_CONF_DIR}/vm.args")"
             echo "$vm_args_content" >"${COUCHDB_CONF_DIR}/vm.args"
         else
             echo "${key} ${value}" >>"${COUCHDB_CONF_DIR}/vm.args"
@@ -197,9 +236,14 @@ couchdb_start_bg() {
     info "Starting CouchDB in background..."
     local start_command=("${COUCHDB_BIN_DIR}/couchdb")
     am_i_root && start_command=("run_as_user" "$COUCHDB_DAEMON_USER" "${start_command[@]}")
-    debug_execute "${start_command[@]}" &
-    wait-for-port "${COUCHDB_PORT_NUMBER:-5984}"
-    wait-for-port "${COUCHDB_CLUSTER_PORT_NUMBER:-9100}"
+    local -r couchdb_log_file="${COUCHDB_TMP_DIR}/couchdb-startup.log"
+    "${start_command[@]}" >"${couchdb_log_file}" 2>&1 &
+    if ! wait-for-port "${COUCHDB_PORT_NUMBER:-5984}" || ! wait-for-port "${COUCHDB_CLUSTER_PORT_NUMBER:-9100}"; then
+        error "CouchDB failed to start. Startup output:"
+        cat "${couchdb_log_file}" >&2
+        return 1
+    fi
+    debug_execute cat "${couchdb_log_file}"
 }
 
 ########################
@@ -234,6 +278,55 @@ couchdb_create_initial_databases() {
         debug "Creating database '${db}'"
         debug_execute "${query[@]}"
     done
+}
+
+########################
+# Run custom init scripts from COUCHDB_INITSCRIPTS_DIR on first boot
+# Globals:
+#   COUCHDB_INITSCRIPTS_DIR
+#   COUCHDB_IGNORE_INITDB_SCRIPTS
+#   COUCHDB_DATA_DIR
+# Arguments:
+#   None
+# Returns:
+#   None
+#########################
+couchdb_run_init_scripts() {
+    local -r semaphore="${COUCHDB_DATA_DIR}/.user_scripts_initialized"
+
+    if is_boolean_yes "${COUCHDB_IGNORE_INITDB_SCRIPTS:-no}"; then
+        info "Skipping init scripts (COUCHDB_IGNORE_INITDB_SCRIPTS=yes)"
+        return
+    fi
+
+    if [[ -f "$semaphore" ]]; then
+        info "Init scripts already executed, skipping..."
+        return
+    fi
+
+    local -a scripts
+    readarray -d '' scripts < <(find "${COUCHDB_INITSCRIPTS_DIR}/" -type f -name "*.sh" -print0 2>/dev/null | sort -z)
+    if [[ "${#scripts[@]}" -eq 0 ]]; then
+        return
+    fi
+
+    info "Loading user's custom files from ${COUCHDB_INITSCRIPTS_DIR} ..."
+    if ! is_couchdb_running; then
+        couchdb_start_bg
+    fi
+
+    for f in "${scripts[@]}"; do
+        if [[ -x "$f" ]]; then
+            debug "Executing $f"
+            "$f"
+        else
+            debug "Sourcing $f"
+            # shellcheck disable=SC1090
+            . "$f"
+        fi
+    done
+
+    touch "$semaphore"
 }
 
 ########################
