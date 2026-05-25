@@ -8,8 +8,8 @@ set -euo pipefail
 DOCKER_USER="${DOCKER_USER:?ERROR: DOCKER_USER env is not set}"
 MAX_PARALLEL=5
 LOG_DIR="./logs"
-#PLATFORM=linux/amd64
-PLATFORM=linux/amd64,linux/arm64
+PLATFORM=linux/amd64
+#PLATFORM=linux/amd64,linux/arm64
 
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <container1> [container2] ..."
