@@ -7,13 +7,13 @@ ARG DOWNLOADS_URL="downloads.bitnami.com/files/stacksmith"
 ARG TARGETARCH
 
 LABEL org.opencontainers.image.base.name="docker.io/bitnami/minideb:bookworm" \
-      org.opencontainers.image.created="2026-04-08T21:46:49Z" \
+      org.opencontainers.image.created="2026-05-23T11:52:15Z" \
       org.opencontainers.image.description="Application packaged by Broadcom, Inc." \
       org.opencontainers.image.documentation="https://github.com/bitnami/containers/tree/main/bitnami/superset/README.md" \
       org.opencontainers.image.source="https://github.com/bitnami/containers/tree/main/bitnami/superset" \
       org.opencontainers.image.title="superset" \
       org.opencontainers.image.vendor="Broadcom, Inc." \
-      org.opencontainers.image.version="6.0.0"
+      org.opencontainers.image.version="6.1.0"
 
 ENV HOME="/" \
     OS_ARCH="${TARGETARCH:-amd64}" \
@@ -28,9 +28,9 @@ RUN --mount=type=secret,id=downloads_url,env=SECRET_DOWNLOADS_URL \
     DOWNLOADS_URL=${SECRET_DOWNLOADS_URL:-${DOWNLOADS_URL}} ; \
     mkdir -p /tmp/bitnami/pkg/cache/ ; cd /tmp/bitnami/pkg/cache/ || exit 1 ; \
     COMPONENTS=( \
-      "python-3.10.20-4-linux-${OS_ARCH}-debian-12" \
+      "python-3.10.20-13-linux-${OS_ARCH}-debian-12" \
       "mariadb-lib-12.2.2-3-linux-${OS_ARCH}-debian-12" \
-      "superset-6.0.0-3-linux-${OS_ARCH}-debian-12" \
+      "superset-6.1.0-0-linux-${OS_ARCH}-debian-12" \
     ) ; \
     for COMPONENT in "${COMPONENTS[@]}"; do \
       if [ ! -f "${COMPONENT}.tar.gz" ]; then \
@@ -48,10 +48,10 @@ RUN find / -perm /6000 -type f -exec chmod a-s {} \; || true
 
 COPY rootfs /
 RUN /opt/bitnami/scripts/superset/postunpack.sh
-ENV APP_VERSION="6.0.0" \
+ENV APP_VERSION="6.1.0" \
     BITNAMI_APP_NAME="superset" \
     FLASK_APP="superset.app:create_app()" \
-    IMAGE_REVISION="9" \
+    IMAGE_REVISION="1" \
     LD_LIBRARY_PATH="/opt/bitnami/mariadb/lib:$LD_LIBRARY_PATH" \
     PATH="/opt/bitnami/superset/venv/bin:/opt/bitnami/python/bin:$PATH" \
     SUPERSET_HOME="/opt/bitnami/superset/superset_home"

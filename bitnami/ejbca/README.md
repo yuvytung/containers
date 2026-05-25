@@ -11,7 +11,13 @@ Trademarks: This software listing is packaged by Bitnami. The respective tradema
 docker run --name ejbca bitnami/ejbca:latest
 ```
 
-**Warning**: This quick setup is only intended for development environments. You are encouraged to change the insecure default credentials and check out the available configuration options in the [Configuration](#configuration) section for a more secure deployment.
+## Using `docker-compose.yml`
+
+The docker-compose.yaml file of this container can be found in the [Bitnami Containers repository](https://github.com/bitnami/containers/).
+
+[https://github.com/bitnami/containers/tree/main/bitnami/ejbca/docker-compose.yml](https://github.com/bitnami/containers/tree/main/bitnami/ejbca/docker-compose.yml)
+
+Please be aware this file has not undergone internal testing. Consequently, we advise its use exclusively for development or testing purposes. For production-ready deployments, we highly recommend utilizing its associated [Bitnami Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/ejbca).
 
 ## Why use Bitnami Secure Images?
 
@@ -76,7 +82,7 @@ The following tables list the main variables you can set.
 | `EJBCA_HTTPS_PORT_NUMBER`            | Wildfly https port number                 | `8443`                                                                                                                                                 |
 | `EJBCA_HTTPS_ADVERTISED_PORT_NUMBER` | Rendered port for administrator login URL | `$EJBCA_HTTPS_PORT_NUMBER`                                                                                                                             |
 | `EJBCA_ADMIN_USERNAME`               | EJBCA administrator username              | `superadmin`                                                                                                                                           |
-| `EJBCA_ADMIN_PASSWORD`               | EJBCA administrator password.             | `Bitnami1234`                                                                                                                                          |
+| `EJBCA_ADMIN_PASSWORD`               | EJBCA administrator password.             | `nil`                                                                                                                                                  |
 | `EJBCA_DATABASE_FLAVOR`              | EJBCA database flavor                     | `mariadb`                                                                                                                                              |
 | `EJBCA_DATABASE_HOST`                | Database hostname                         | `nil`                                                                                                                                                  |
 | `EJBCA_DATABASE_PORT`                | Database port number.                     | `3306`                                                                                                                                                 |
@@ -153,13 +159,7 @@ You can add custom script into the `/docker-entrypoint-init.d` directory. All fi
 
 ## Logging
 
-The Bitnami EJBCA Docker image sends the container logs to `stdout`. To view the logs:
-
-```console
-docker logs ejbca
-```
-
-You can configure the containers [logging driver](https://docs.docker.com/engine/admin/logging/overview/) using the `--log-driver` option if you wish to consume the container logs differently. In the default configuration docker uses the `json-file` driver.
+The Bitnami EJBCA Docker image sends the container logs to the `stdout`. You can configure the containers [logging driver](https://docs.docker.com/engine/admin/logging/overview/) using the `--log-driver` option if you wish to consume the container logs differently. In the default configuration docker uses the `json-file` driver.
 
 ## Notable Changes
 
