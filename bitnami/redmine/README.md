@@ -81,7 +81,7 @@ The following tables list the main variables you can set.
 | `REDMINE_SKIP_BOOTSTRAP`           | Whether to perform initial bootstrapping for the application.                                                                   | `nil`                                                                                                       |
 | `REDMINE_QUEUE_ADAPTER`            | Active job queue adapter. You may need to install additional dependencies if you select a value other than "async" or "inline". | `inline`                                                                                                    |
 | `REDMINE_USERNAME`                 | Redmine user name.                                                                                                              | `user`                                                                                                      |
-| `REDMINE_PASSWORD`                 | Redmine user password.                                                                                                          | `bitnami1`                                                                                                  |
+| `REDMINE_PASSWORD`                 | Redmine user password.                                                                                                          | `nil`                                                                                                       |
 | `REDMINE_EMAIL`                    | Redmine user e-mail address.                                                                                                    | `user@example.com`                                                                                          |
 | `REDMINE_FIRST_NAME`               | Redmine user first name.                                                                                                        | `UserName`                                                                                                  |
 | `REDMINE_LAST_NAME`                | Redmine user last name.                                                                                                         | `LastName`                                                                                                  |
@@ -151,7 +151,7 @@ FROM bitnami/redmine
 - The following environment variables have been deprecated. They will continue to work as before, but support for these may be removed in a future update:
 
   - `REDMINE_DB_POSTGRES` in favor of `REDMINE_DATABASE_HOST`. When used, `REDMINE_DATABASE_TYPE=postgresql` will also be set.
-  - `REDMINE_DB_MYSQL`, in favor of `REDMINE_DATABASE_HOST`. Whenused, `REDMINE_DATABASE_TYPE=mariadb` will also be set.
+  - `REDMINE_DB_MYSQL`, in favor of `REDMINE_DATABASE_HOST`. When used, `REDMINE_DATABASE_TYPE=mariadb` will also be set.
 
 ## License
 

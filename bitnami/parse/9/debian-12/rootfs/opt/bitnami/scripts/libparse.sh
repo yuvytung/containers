@@ -7,6 +7,7 @@
 # shellcheck disable=SC1091
 
 # Load generic libraries
+. /opt/bitnami/scripts/libfile.sh
 . /opt/bitnami/scripts/libfs.sh
 . /opt/bitnami/scripts/libos.sh
 . /opt/bitnami/scripts/libnet.sh
@@ -102,7 +103,7 @@ parse_initialize() {
         info "Ensuring Parse directories exist"
         ensure_dir_exists "$PARSE_VOLUME_DIR"
         # Use daemon:root ownership for compatibility when running as a non-root user
-        am_i_root && configure_permissions_ownership "$PARSE_VOLUME_DIR" -d "775" -f "664" -u "$PARSE_DAEMON_USER" -g "root"
+        am_i_root && configure_permissions_ownership "$PARSE_VOLUME_DIR" -d "775" -f "664" -u "$PARSE_DAEMON_USER" -g "root" -n
         info "Trying to connect to the database server"
         local -r connection_string="mongodb://${PARSE_DATABASE_USER}:${PARSE_DATABASE_PASSWORD}@${PARSE_DATABASE_HOST}:${PARSE_DATABASE_PORT_NUMBER}/${PARSE_DATABASE_NAME}"
         parse_wait_for_mongodb_connection "$connection_string"
@@ -199,8 +200,10 @@ parse_conf_get() {
 #########################
 parse_wait_for_mongodb_connection() {
     local -r connection_string="${1:?missing connection string}"
+    local connection_string_file
+    connection_string_file="$(credential_to_temp_file "$connection_string")"
     check_mongodb_connection() {
-        local -r mongo_args=("$connection_string" "--eval" "db.stats()")
+        local -r mongo_args=("$(<"$connection_string_file")" "--eval" "db.stats()")
         local -r res=$(mongosh "${mongo_args[@]}")
         debug "$res"
         echo "$res" | grep -q 'ok: 1'

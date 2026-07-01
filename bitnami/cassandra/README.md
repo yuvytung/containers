@@ -100,6 +100,7 @@ The following tables list the main variables you can set.
 | `CASSANDRA_HOST`                                   | Cassandra host name                                                                     | `nil`                                 |
 | `CASSANDRA_INTERNODE_ENCRYPTION`                   | Internode encryption type                                                               | `none`                                |
 | `CASSANDRA_NUM_TOKENS`                             | Number of tokens in cluster connection                                                  | `256`                                 |
+| `CASSANDRA_ISOLATED_SEEDING`                       | Perform seeding without exposing RPC endpoint                                           | `yes`                                 |
 | `CASSANDRA_PASSWORD_SEEDER`                        | Set node as password seeder in the cluster                                              | `no`                                  |
 | `CASSANDRA_SEEDS`                                  | List of cluster seeds                                                                   | `$DB_HOST`                            |
 | `CASSANDRA_PEERS`                                  | List of cluster peers                                                                   | `$DB_SEEDS`                           |
@@ -159,6 +160,7 @@ The following tables list the main variables you can set.
 | `CASSANDRA_FIRST_BOOT_LOG_FILE`       | Path to the Cassandra first boot log file                                       | `${DB_LOG_DIR}/cassandra_first_boot.log`        |
 | `CASSANDRA_INITSCRIPTS_BOOT_LOG_FILE` | Path to the Cassandra init scripts log file                                     | `${DB_LOG_DIR}/cassandra_init_scripts_boot.log` |
 | `CASSANDRA_PID_FILE`                  | Path to the Cassandra pid file                                                  | `${DB_TMP_DIR}/cassandra.pid`                   |
+| `CASSANDRA_INIT_SEMAPHORE`            | Path to the Cassandra init semaphore file                                       | `${DB_VOLUME_DIR}/.cassandra-init`              |
 | `CASSANDRA_DAEMON_USER`               | Cassandra system user                                                           | `cassandra`                                     |
 | `CASSANDRA_DAEMON_GROUP`              | Cassandra system group                                                          | `cassandra`                                     |
 | `CASSANDRA_CONF_DIR`                  | Cassandra configuration directory                                               | `${DB_BASE_DIR}/conf`                           |

@@ -106,6 +106,7 @@ The following tables list the main variables you can set.
 | `MARIADB_UPGRADE`                             | MariaDB Galera upgrade option.                                                                                            | `AUTO`                                    |
 | `MARIADB_SKIP_TEST_DB`                        | Whether to skip creating the test database.                                                                               | `no`                                      |
 | `MARIADB_CLIENT_ENABLE_SSL`                   | Whether to force SSL for connections to the MariaDB Galera database.                                                      | `no`                                      |
+| `MARIADB_REPLICATION_USE_SSL`                 | Whether to force SSL for MariaDB Galera replication.                                                                      | `$DB_CLIENT_ENABLE_SSL`                   |
 | `MARIADB_CLIENT_SSL_CA_FILE`                  | Path to CA certificate to use for SSL connections to the MariaDB Galera database server.                                  | `nil`                                     |
 | `MARIADB_CLIENT_SSL_CERT_FILE`                | Path to client public key certificate to use for SSL connections to the MariaDB Galera database server.                   | `nil`                                     |
 | `MARIADB_CLIENT_SSL_KEY_FILE`                 | Path to client private key to use for SSL connections to the MariaDB Galera database server.                              | `nil`                                     |
@@ -134,7 +135,7 @@ The following tables list the main variables you can set.
 | `MARIADB_TLS_KEY_FILE`                        | Path to the MariaDB Galera SSL/TLS certificate key file.                                                                  | `nil`                                     |
 | `MARIADB_TLS_CA_FILE`                         | Path to the MariaDB Galera SSL/TLS certificate authority CA file.                                                         | `nil`                                     |
 | `MARIADB_REPLICATION_USER`                    | MariaDB Galera replication database user.                                                                                 | `monitor`                                 |
-| `MARIADB_REPLICATION_PASSWORD`                | Password for the MariaDB Galera replication database user.                                                                | `monitor`                                 |
+| `MARIADB_REPLICATION_PASSWORD`                | Password for the MariaDB Galera replication database user.                                                                | `nil`                                     |
 
 #### Read-only environment variables
 

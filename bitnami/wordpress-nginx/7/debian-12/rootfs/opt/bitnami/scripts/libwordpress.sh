@@ -126,12 +126,16 @@ wordpress_validate() {
     fi
 
     # Validate credentials
+    check_empty_value "WORDPRESS_PASSWORD"
     if is_boolean_yes "${ALLOW_EMPTY_PASSWORD:-}"; then
         warn "You set the environment variable ALLOW_EMPTY_PASSWORD=${ALLOW_EMPTY_PASSWORD:-}. For safety reasons, do not use this flag in a production environment."
     else
-        for empty_env_var in "WORDPRESS_DATABASE_PASSWORD" "WORDPRESS_PASSWORD"; do
-            is_empty_value "${!empty_env_var}" && print_validation_error "The ${empty_env_var} environment variable is empty or not set. Set the environment variable ALLOW_EMPTY_PASSWORD=yes to allow a blank password. This is only recommended for development environments."
-        done
+        is_empty_value "${WORDPRESS_DATABASE_PASSWORD}" && print_validation_error "The WORDPRESS_DATABASE_PASSWORD environment variable is empty or not set. Set the environment variable ALLOW_EMPTY_PASSWORD=yes to allow a blank password. This is only recommended for development environments."
+    fi
+
+    # Validate hostname
+    if is_empty_value "$WORDPRESS_HOSTNAME"; then
+        warn "WORDPRESS_HOSTNAME is not set, site URL will be constructed based on HTTP_HOST header which opens up vulnerability to password-reset poisoning attacks. Do not leave this variable empty in production environments."
     fi
 
     # Validate SMTP credentials
@@ -140,8 +144,8 @@ wordpress_validate() {
         for empty_env_var in "WORDPRESS_SMTP_USER" "WORDPRESS_SMTP_PASSWORD"; do
             is_empty_value "${!empty_env_var}" && warn "The ${empty_env_var} environment variable is empty or not set."
         done
-        is_empty_value "$WORDPRESS_SMTP_PORT_NUMBER" && print_validation_error "The WORDPRESS_SMTP_PORT_NUMBER environment variable is empty or not set."
-        ! is_empty_value "$WORDPRESS_SMTP_PORT_NUMBER" && check_valid_port "WORDPRESS_SMTP_PORT_NUMBER"
+        check_empty_value "WORDPRESS_SMTP_PORT_NUMBER"
+        check_valid_port "WORDPRESS_SMTP_PORT_NUMBER"
         ! is_empty_value "$WORDPRESS_SMTP_PROTOCOL" && check_multi_value "WORDPRESS_SMTP_PROTOCOL" "ssl tls"
     fi
 
@@ -236,7 +240,7 @@ wordpress_initialize() {
         info "Ensuring WordPress directories exist"
         ensure_dir_exists "$WORDPRESS_VOLUME_DIR"
         # Use daemon:root ownership for compatibility when running as a non-root user
-        am_i_root && configure_permissions_ownership "$WORDPRESS_VOLUME_DIR" -d "775" -f "664" -u "$WEB_SERVER_DAEMON_USER" -g "root"
+        am_i_root && configure_permissions_ownership "$WORDPRESS_VOLUME_DIR" -d "775" -f "664" -u "$WEB_SERVER_DAEMON_USER" -g "root" -n
         info "Trying to connect to the database server"
         wordpress_wait_for_mysql_connection "$WORDPRESS_DATABASE_HOST" "$WORDPRESS_DATABASE_PORT_NUMBER" "$WORDPRESS_DATABASE_NAME" "$WORDPRESS_DATABASE_USER" "$WORDPRESS_DATABASE_PASSWORD"
 
@@ -413,7 +417,7 @@ wordpress_initialize() {
             wp_config_path="$(readlink -f "$WORDPRESS_CONF_FILE")"
             if am_i_root; then
                 is_file_writable "$wp_config_path" && configure_permissions_ownership "$wp_config_path" -f "440" -u "$WEB_SERVER_DAEMON_USER" -g "root"
-                configure_permissions_ownership "${WORDPRESS_VOLUME_DIR}/wp-content" -d "775" -f "664" -u "$WEB_SERVER_DAEMON_USER" -g "root"
+                configure_permissions_ownership "${WORDPRESS_VOLUME_DIR}/wp-content" -d "775" -f "664" -u "$WEB_SERVER_DAEMON_USER" -g "root" -n
             else
                 is_file_writable "$wp_config_path" && configure_permissions_ownership "$wp_config_path" -f "440"
                 configure_permissions_ownership "${WORDPRESS_VOLUME_DIR}/wp-content" -d "775" -f "664"
@@ -497,7 +501,6 @@ wordpress_conf_set() {
     local -r key="${1:?key missing}"
     local -r value="${2:-}"
     local -r is_literal="${3:-no}"
-    debug "Setting ${key} to '${value}' in WordPress configuration (literal: ${is_literal})"
     # Note: Using an empty --url to avoid any failure if the current URL is not properly configured
     local -a cmd=("wp_execute" "--url=http:" "config" "set" "$key" "$value")
     if is_boolean_yes "$is_literal"; then
@@ -594,20 +597,26 @@ EOF
 #   None
 #########################
 wordpress_configure_reverse_proxy() {
-    wordpress_conf_append "$(
-        cat <<"EOF"
+    local xfh_condition
+    if ! is_empty_value "$WORDPRESS_HOSTNAME"; then
+        # Only accept XFH that exactly matches the configured canonical hostname
+        xfh_condition="! empty( \$_SERVER['HTTP_X_FORWARDED_HOST'] ) && strtolower( trim( \$_SERVER['HTTP_X_FORWARDED_HOST'] ) ) === strtolower( '${WORDPRESS_HOSTNAME}' )"
+    else
+        xfh_condition="! empty( \$_SERVER['HTTP_X_FORWARDED_HOST'] )"
+    fi
+    wordpress_conf_append "$(cat <<PHPEOF
 /**
  * Handle potential reverse proxy headers. Ref:
  *  - https://wordpress.org/support/article/faq-installation/#how-can-i-get-wordpress-working-when-im-behind-a-reverse-proxy
  *  - https://wordpress.org/support/article/administration-over-ssl/#using-a-reverse-proxy
  */
-if ( ! empty( $_SERVER['HTTP_X_FORWARDED_HOST'] ) ) {
-	$_SERVER['HTTP_HOST'] = $_SERVER['HTTP_X_FORWARDED_HOST'];
+if ( ${xfh_condition} ) {
+	\$_SERVER['HTTP_HOST'] = \$_SERVER['HTTP_X_FORWARDED_HOST'];
 }
-if ( ! empty( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) \&\& 'https' === $_SERVER['HTTP_X_FORWARDED_PROTO'] ) {
-	$_SERVER['HTTPS'] = 'on';
+if ( ! empty( \$_SERVER['HTTP_X_FORWARDED_PROTO'] ) \&\& 'https' === \$_SERVER['HTTP_X_FORWARDED_PROTO'] ) {
+	\$_SERVER['HTTPS'] = 'on';
 }
-EOF
+PHPEOF
     )"
 }
 
@@ -621,9 +630,13 @@ EOF
 #   None
 #########################
 wordpress_configure_urls() {
-    # Set URL to dynamic value, depending on which host WordPress is accessed from (to be overridden later)
-    # Note that wp-config.php is officially indented via tabs, not spaces
-    wordpress_conf_append "$(
+    local wp_url_string
+    local wp_url_protocol="http"
+    if is_empty_value "$WORDPRESS_HOSTNAME"; then
+        wp_url_string="'${wp_url_protocol}://' . \$_SERVER['HTTP_HOST'] . '/'"
+        # Set URL to dynamic value, depending on which host WordPress is accessed from (to be overridden later)
+        # Note that wp-config.php is officially indented via tabs, not spaces
+        wordpress_conf_append "$(
         cat <<"EOF"
 /**
  * The WP_SITEURL and WP_HOME options are configured to access from any hostname or IP address.
@@ -636,10 +649,10 @@ if ( defined( 'WP_CLI' ) ) {
 	$_SERVER['HTTP_HOST'] = '127.0.0.1';
 }
 EOF
-    )"
-    local wp_url_protocol="http"
-    (is_boolean_yes "$WORDPRESS_ENABLE_HTTPS" || [[ "$WORDPRESS_SCHEME" = "https" ]]) && wp_url_protocol="https"
-    local wp_url_string="'${wp_url_protocol}://' . \$_SERVER['HTTP_HOST'] . '/'"
+)"
+    else
+        wp_url_string="'${wp_url_protocol}://${WORDPRESS_HOSTNAME}/'"
+    fi
     wordpress_conf_set "WP_HOME" "$wp_url_string" yes
     wordpress_conf_set "WP_SITEURL" "$wp_url_string" yes
 }
@@ -726,6 +739,9 @@ wordpress_generate_web_server_configuration() {
     else
         error "Unknown WordPress Multisite network mode"
         return 1
+    fi
+    if ! is_empty_value "$WORDPRESS_HOSTNAME"; then
+        web_server_config_create_flags+=("--server-name" "$WORDPRESS_HOSTNAME")
     fi
 
     if ! is_boolean_yes "$WORDPRESS_ENABLE_XML_RPC"; then
