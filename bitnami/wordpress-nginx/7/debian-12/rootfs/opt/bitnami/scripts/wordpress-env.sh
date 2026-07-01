@@ -28,6 +28,7 @@ wordpress_env_vars=(
     WORDPRESS_ENABLE_HTTPS
     WORDPRESS_BLOG_NAME
     WORDPRESS_SCHEME
+    WORDPRESS_HOSTNAME
     WORDPRESS_HTACCESS_OVERRIDE_NONE
     WORDPRESS_ENABLE_HTACCESS_PERSISTENCE
     WORDPRESS_RESET_DATA_PERMISSIONS
@@ -128,6 +129,7 @@ export WORDPRESS_DATA_TO_PERSIST="${WORDPRESS_DATA_TO_PERSIST:-wp-config.php wp-
 export WORDPRESS_ENABLE_HTTPS="${WORDPRESS_ENABLE_HTTPS:-no}" # only used during the first initialization
 export WORDPRESS_BLOG_NAME="${WORDPRESS_BLOG_NAME:-"User's blog"}" # only used during the first initialization
 export WORDPRESS_SCHEME="${WORDPRESS_SCHEME:-http}" # only used during the first initialization
+export WORDPRESS_HOSTNAME="${WORDPRESS_HOSTNAME:-}" # only used during the first initialization
 export WORDPRESS_HTACCESS_OVERRIDE_NONE="${WORDPRESS_HTACCESS_OVERRIDE_NONE:-yes}" # only used during the first initialization
 WORDPRESS_ENABLE_HTACCESS_PERSISTENCE="${WORDPRESS_ENABLE_HTACCESS_PERSISTENCE:-"${WORDPRESS_HTACCESS_PERSISTENCE_ENABLED:-}"}"
 export WORDPRESS_ENABLE_HTACCESS_PERSISTENCE="${WORDPRESS_ENABLE_HTACCESS_PERSISTENCE:-no}" # only used during the first initialization
@@ -153,7 +155,7 @@ export WORDPRESS_ENABLE_XML_RPC="${WORDPRESS_ENABLE_XML_RPC:-no}" # only used du
 
 # WordPress credentials
 export WORDPRESS_USERNAME="${WORDPRESS_USERNAME:-user}" # only used during the first initialization
-export WORDPRESS_PASSWORD="${WORDPRESS_PASSWORD:-bitnami}" # only used during the first initialization
+export WORDPRESS_PASSWORD="${WORDPRESS_PASSWORD:-}" # only used during the first initialization
 export WORDPRESS_EMAIL="${WORDPRESS_EMAIL:-user@example.com}" # only used during the first initialization
 export WORDPRESS_FIRST_NAME="${WORDPRESS_FIRST_NAME:-UserName}" # only used during the first initialization
 export WORDPRESS_LAST_NAME="${WORDPRESS_LAST_NAME:-LastName}" # only used during the first initialization

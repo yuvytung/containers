@@ -10,6 +10,7 @@
 . /opt/bitnami/scripts/libfile.sh
 . /opt/bitnami/scripts/libfs.sh
 . /opt/bitnami/scripts/liblog.sh
+. /opt/bitnami/scripts/libnet.sh
 . /opt/bitnami/scripts/libos.sh
 . /opt/bitnami/scripts/libvalidations.sh
 . /opt/bitnami/scripts/libnet.sh
@@ -161,6 +162,10 @@ repmgr_validate() {
         print_validation_error "The allowed values for REPMGR_FAILOVER are: automatic or manual."
     fi
 
+    if [[ -z "$REPMGR_SSL_CA_FILE" ]] && [[ "$REPMGR_SSL_MODE" =~ ^(verify-ca|verify-full)$ ]]; then
+        print_validation_error "The environment variable REPMGR_SSL_CA_FILE is required when REPMGR_SSL_MODE is set to 'verify-ca' or 'verify-full'."
+    fi
+
     [[ "$error_code" -eq 0 ]] || exit "$error_code"
 }
 
@@ -202,6 +207,7 @@ repmgr_get_upstream_node() {
             elif [[ "$(echo "$primary_conninfo" | wc -l)" -eq 1 ]]; then
                 suggested_primary_host="$(echo "$primary_conninfo" | awk -F 'host=' '{print $2}' | awk '{print $1}')"
                 suggested_primary_port="$(echo "$primary_conninfo" | awk -F 'port=' '{print $2}' | awk '{print $1}')"
+                repmgr_validate_host_port "$suggested_primary_host" "$suggested_primary_port" || continue
                 debug "Pretending primary role node - '${suggested_primary_host}:${suggested_primary_port}'"
                 if [[ -n "$pretending_primary_host" ]]; then
                     if [[ "${pretending_primary_host}:${pretending_primary_port}" != "${suggested_primary_host}:${suggested_primary_port}" ]]; then
@@ -311,11 +317,9 @@ repmgr_set_role() {
       role="witness"
     fi
 
-    cat <<EOF
-export REPMGR_ROLE="$role"
-export REPMGR_CURRENT_PRIMARY_HOST="$primary_host"
-export REPMGR_CURRENT_PRIMARY_PORT="$primary_port"
-EOF
+    export REPMGR_ROLE="$role"
+    export REPMGR_CURRENT_PRIMARY_HOST="$primary_host"
+    export REPMGR_CURRENT_PRIMARY_PORT="$primary_port"
 }
 
 ########################
@@ -436,17 +440,17 @@ repmgr_inject_pghba_configuration() {
 local    all             all                         trust
 host     all             all            127.0.0.1/32 trust
 host     all             all            ::1/128      trust
-host     all             all            0.0.0.0/0    md5
-host     all             all            ::/0         md5
-host     $REPMGR_DATABASE          $REPMGR_USERNAME         0.0.0.0/0    md5
-host     $REPMGR_DATABASE          $REPMGR_USERNAME         ::/0         md5
-host     replication     all            0.0.0.0/0    md5
-host     replication     all            ::/0         md5
+host     all             all            0.0.0.0/0    "$POSTGRESQL_PGHBA_AUTH_METHOD"
+host     all             all            ::/0         "$POSTGRESQL_PGHBA_AUTH_METHOD"
+host     $REPMGR_DATABASE          $REPMGR_USERNAME         0.0.0.0/0    "$POSTGRESQL_PGHBA_AUTH_METHOD"
+host     $REPMGR_DATABASE          $REPMGR_USERNAME         ::/0         "$POSTGRESQL_PGHBA_AUTH_METHOD"
+host     replication     all            0.0.0.0/0    "$POSTGRESQL_PGHBA_AUTH_METHOD"
+host     replication     all            ::/0         "$POSTGRESQL_PGHBA_AUTH_METHOD"
 EOF
     if is_boolean_yes "$POSTGRESQL_SR_CHECK"; then
         cat >>"${POSTGRESQL_MOUNTED_CONF_DIR}/pg_hba.conf" <<EOF
-host     $POSTGRESQL_SR_CHECK_DATABASE        $POSTGRESQL_SR_CHECK_USERNAME  0.0.0.0/0    md5
-host     $POSTGRESQL_SR_CHECK_DATABASE        $POSTGRESQL_SR_CHECK_USERNAME  ::/0         md5
+host     $POSTGRESQL_SR_CHECK_DATABASE        $POSTGRESQL_SR_CHECK_USERNAME  0.0.0.0/0    "$POSTGRESQL_PGHBA_AUTH_METHOD"
+host     $POSTGRESQL_SR_CHECK_DATABASE        $POSTGRESQL_SR_CHECK_USERNAME  ::/0         "$POSTGRESQL_PGHBA_AUTH_METHOD"
 EOF
     fi
     if is_boolean_yes "$POSTGRESQL_ENABLE_TLS" && [[ -n $POSTGRESQL_TLS_CA_FILE ]]; then
@@ -529,7 +533,7 @@ repmgr_generate_repmgr_config() {
 
     cat <<EOF >>"${REPMGR_CONF_FILE}.tmp"
 event_notification_command='${REPMGR_EVENTS_DIR}/router.sh %n %e %s "%t" "%d"'
-ssh_options='-o "StrictHostKeyChecking no" -v'
+ssh_options='${REPMGR_SSH_OPTIONS}'
 use_replication_slots='${REPMGR_USE_REPLICATION_SLOTS}'
 pg_bindir='${POSTGRESQL_BIN_DIR}'
 
@@ -663,8 +667,11 @@ repmgr_clone_primary() {
     fi
 
     info "Cloning data from primary node..."
-    local -r flags=("-f" "$REPMGR_CONF_FILE" "-h" "$REPMGR_CURRENT_PRIMARY_HOST" "-p" "$REPMGR_CURRENT_PRIMARY_PORT" "-U" "$REPMGR_USERNAME" "-d" "dbname=$REPMGR_DATABASE host=$REPMGR_CURRENT_PRIMARY_HOST port=$REPMGR_CURRENT_PRIMARY_PORT connect_timeout=$REPMGR_CONNECT_TIMEOUT" "-D" "$POSTGRESQL_DATA_DIR" "standby" "clone" "--fast-checkpoint" "--force")
-
+    local ssl_connstr="sslmode=${REPMGR_SSL_MODE}"
+    if [[ -f "${REPMGR_SSL_CA_FILE:-}" ]]; then
+        ssl_connstr+=" sslrootcert=${REPMGR_SSL_CA_FILE}"
+    fi
+    local -r flags=("-f" "$REPMGR_CONF_FILE" "-h" "$REPMGR_CURRENT_PRIMARY_HOST" "-p" "$REPMGR_CURRENT_PRIMARY_PORT" "-U" "$REPMGR_USERNAME" "-d" "dbname=$REPMGR_DATABASE host=$REPMGR_CURRENT_PRIMARY_HOST port=$REPMGR_CURRENT_PRIMARY_PORT connect_timeout=$REPMGR_CONNECT_TIMEOUT ${ssl_connstr}" "-D" "$POSTGRESQL_DATA_DIR" "standby" "clone" "--fast-checkpoint" "--force")
     if [[ "$REPMGR_USE_PASSFILE" = "true" ]]; then
         PGPASSFILE="$REPMGR_PASSFILE_PATH" repmgr_execute "${flags[@]}"
     else
@@ -683,7 +690,11 @@ repmgr_clone_primary() {
 #########################
 repmgr_pgrewind() {
     info "Running pg_rewind data to primary node..."
-    local -r flags=("-D" "$POSTGRESQL_DATA_DIR" "--source-server" "host=${REPMGR_CURRENT_PRIMARY_HOST} port=${REPMGR_CURRENT_PRIMARY_PORT} user=${REPMGR_USERNAME} dbname=${REPMGR_DATABASE}")
+    local ssl_connstr="sslmode=${REPMGR_SSL_MODE}"
+    if [[ -f "${REPMGR_SSL_CA_FILE:-}" ]]; then
+        ssl_connstr+=" sslrootcert=${REPMGR_SSL_CA_FILE}"
+    fi
+    local -r flags=("-D" "$POSTGRESQL_DATA_DIR" "--source-server" "host=${REPMGR_CURRENT_PRIMARY_HOST} port=${REPMGR_CURRENT_PRIMARY_PORT} user=${REPMGR_USERNAME} dbname=${REPMGR_DATABASE} ${ssl_connstr}")
 
     if [[ "$REPMGR_USE_PASSFILE" = "true" ]]; then
         PGPASSFILE="$REPMGR_PASSFILE_PATH" debug_execute "${POSTGRESQL_BIN_DIR}/pg_rewind" "${flags[@]}"
@@ -951,4 +962,20 @@ repmgr_check_status() {
     fi
 
     return 0
+}
+
+########################
+# Validate host and port
+# Arguments:
+#   $1 - host
+#   $2 - port
+# Returns:
+#   0 if the validation succeeded, 1 otherwise
+#########################
+repmgr_validate_host_port() {
+    local host="${1:?missing host}"
+    local port="${2:?missing port}"
+
+    is_hostname_resolved "$host" || return 1
+    validate_port "$port" || return 1
 }

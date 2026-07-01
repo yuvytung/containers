@@ -3,17 +3,17 @@
 
 FROM docker.io/bitnami/minideb:bookworm
 
-ARG DOWNLOADS_URL="downloads.bitnami.com/files/stacksmith"
+ARG DOWNLOADS_URL="https://downloads.bitnami.com/files/stacksmith"
 ARG TARGETARCH
 
 LABEL org.opencontainers.image.base.name="docker.io/bitnami/minideb:bookworm" \
-      org.opencontainers.image.created="2026-05-25T11:40:31Z" \
+      org.opencontainers.image.created="2026-06-21T17:18:03Z" \
       org.opencontainers.image.description="Application packaged by Broadcom, Inc." \
       org.opencontainers.image.documentation="https://github.com/bitnami/containers/tree/main/bitnami/gitea/README.md" \
       org.opencontainers.image.source="https://github.com/bitnami/containers/tree/main/bitnami/gitea" \
       org.opencontainers.image.title="gitea" \
       org.opencontainers.image.vendor="Broadcom, Inc." \
-      org.opencontainers.image.version="1.26.2"
+      org.opencontainers.image.version="1.26.4"
 
 ENV HOME="/" \
     OS_ARCH="${TARGETARCH:-amd64}" \
@@ -29,20 +29,20 @@ RUN --mount=type=secret,id=downloads_url,env=SECRET_DOWNLOADS_URL \
     mkdir -p /tmp/bitnami/pkg/cache/ ; cd /tmp/bitnami/pkg/cache/ || exit 1 ; \
     COMPONENTS=( \
       "nss-wrapper-1.1.16-0-linux-${OS_ARCH}-debian-12" \
-      "wait-for-port-1.0.10-10-linux-${OS_ARCH}-debian-12" \
-      "render-template-1.0.9-165-linux-${OS_ARCH}-debian-12" \
-      "ini-file-1.4.9-10-linux-${OS_ARCH}-debian-12" \
-      "gitea-1.26.2-0-linux-${OS_ARCH}-debian-12" \
+      "wait-for-port-1.0.10-13-linux-${OS_ARCH}-debian-12" \
+      "render-template-1.0.9-167-linux-${OS_ARCH}-debian-12" \
+      "ini-file-1.4.9-12-linux-${OS_ARCH}-debian-12" \
+      "gitea-1.26.4-0-linux-${OS_ARCH}-debian-12" \
     ) ; \
     for COMPONENT in "${COMPONENTS[@]}"; do \
       if [ ! -f "${COMPONENT}.tar.gz" ]; then \
-        curl -SsLf "https://${DOWNLOADS_URL}/${COMPONENT}.tar.gz" -O ; \
-        curl -SsLf "https://${DOWNLOADS_URL}/${COMPONENT}.tar.gz.sha256" -O ; \
+        curl -SsLf "${DOWNLOADS_URL}/${COMPONENT}.tar.gz" -O ; \
       fi ; \
-      sha256sum -c "${COMPONENT}.tar.gz.sha256" ; \
+      sha256sum -c "/opt/bitnami/checksums/${COMPONENT}.tar.gz.sha256" ; \
       tar -zxf "${COMPONENT}.tar.gz" -C /opt/bitnami --strip-components=2 --no-same-owner ; \
-      rm -rf "${COMPONENT}".tar.gz{,.sha256} ; \
-    done
+      rm -rf "${COMPONENT}".tar.gz ; \
+    done ; \
+    rm -rf /opt/bitnami/checksums ;
 RUN apt-get update && apt-get upgrade -y && \
     apt-get clean && rm -rf /var/lib/apt/lists /var/cache/apt/archives
 RUN chmod g+rwX /opt/bitnami
@@ -50,9 +50,9 @@ RUN find / -perm /6000 -type f -exec chmod a-s {} \; || true
 
 COPY rootfs /
 RUN /opt/bitnami/scripts/gitea/postunpack.sh
-ENV APP_VERSION="1.26.2" \
+ENV APP_VERSION="1.26.4" \
     BITNAMI_APP_NAME="gitea" \
-    IMAGE_REVISION="2" \
+    IMAGE_REVISION="0" \
     NSS_WRAPPER_LIB="/opt/bitnami/common/lib/libnss_wrapper.so" \
     PATH="/opt/bitnami/common/bin:/opt/bitnami/gitea/bin:$PATH"
 

@@ -14,6 +14,15 @@
 . /opt/bitnami/scripts/libservice.sh
 . /opt/bitnami/scripts/libvalidations.sh
 
+
+# Helper function to create a PBKDF2-SHA512 password hash
+slappasswd_pbkdf2() {
+    slappasswd -n -T /dev/stdin \
+        -h '{PBKDF2-SHA512}' \
+        -o module-load=pw-pbkdf2 \
+        -o module-path=/opt/bitnami/openldap/libexec/openldap
+}
+
 ########################
 # Load global variables used on OpenLDAP configuration
 # Globals:
@@ -59,11 +68,11 @@ export LDAP_ROOT="${LDAP_ROOT:-dc=example,dc=org}"
 export LDAP_SUFFIX="$(if [ -z "${LDAP_SUFFIX+x}" ]; then echo "${LDAP_ROOT}"; else echo "${LDAP_SUFFIX}"; fi)"
 export LDAP_ADMIN_USERNAME="${LDAP_ADMIN_USERNAME:-admin}"
 export LDAP_ADMIN_DN="${LDAP_ADMIN_USERNAME/#/cn=},${LDAP_ROOT}"
-export LDAP_ADMIN_PASSWORD="${LDAP_ADMIN_PASSWORD:-adminpassword}"
+export LDAP_ADMIN_PASSWORD="${LDAP_ADMIN_PASSWORD:-}"
 export LDAP_CONFIG_ADMIN_ENABLED="${LDAP_CONFIG_ADMIN_ENABLED:-no}"
 export LDAP_CONFIG_ADMIN_USERNAME="${LDAP_CONFIG_ADMIN_USERNAME:-admin}"
 export LDAP_CONFIG_ADMIN_DN="${LDAP_CONFIG_ADMIN_USERNAME/#/cn=},cn=config"
-export LDAP_CONFIG_ADMIN_PASSWORD="${LDAP_CONFIG_ADMIN_PASSWORD:-configpassword}"
+export LDAP_CONFIG_ADMIN_PASSWORD="${LDAP_CONFIG_ADMIN_PASSWORD:-}"
 export LDAP_ADD_SCHEMAS="${LDAP_ADD_SCHEMAS:-yes}"
 export LDAP_EXTRA_SCHEMAS="${LDAP_EXTRA_SCHEMAS:-cosine,inetorgperson,nis}"
 export LDAP_SKIP_DEFAULT_TREE="${LDAP_SKIP_DEFAULT_TREE:-no}"
@@ -76,7 +85,7 @@ export LDAP_GROUP="${LDAP_GROUP:-readers}"
 export LDAP_ENABLE_TLS="${LDAP_ENABLE_TLS:-no}"
 export LDAP_REQUIRE_TLS="${LDAP_REQUIRE_TLS:-no}"
 export LDAP_ULIMIT_NOFILES="${LDAP_ULIMIT_NOFILES:-1024}"
-export LDAP_ALLOW_ANON_BINDING="${LDAP_ALLOW_ANON_BINDING:-yes}"
+export LDAP_ALLOW_ANON_BINDING="${LDAP_ALLOW_ANON_BINDING:-no}"
 export LDAP_LOGLEVEL="${LDAP_LOGLEVEL:-256}"
 export LDAP_PASSWORD_HASH="${LDAP_PASSWORD_HASH:-{SSHA\}}"
 export LDAP_CONFIGURE_PPOLICY="${LDAP_CONFIGURE_PPOLICY:-no}"
@@ -91,7 +100,7 @@ export LDAP_ACCESSLOG_LOGOLD="${LDAP_ACCESSLOG_LOGOLD:-(objectClass=*)}"
 export LDAP_ACCESSLOG_LOGOLDATTR="${LDAP_ACCESSLOG_LOGOLDATTR:-objectClass}"
 export LDAP_ACCESSLOG_ADMIN_USERNAME="${LDAP_ACCESSLOG_ADMIN_USERNAME:-admin}"
 export LDAP_ACCESSLOG_ADMIN_DN="${LDAP_ACCESSLOG_ADMIN_USERNAME/#/cn=},${LDAP_ACCESSLOG_DB:-cn=accesslog}"
-export LDAP_ACCESSLOG_ADMIN_PASSWORD="${LDAP_ACCESSLOG_PASSWORD:-accesspassword}"
+export LDAP_ACCESSLOG_ADMIN_PASSWORD="${LDAP_ACCESSLOG_PASSWORD:-}"
 export LDAP_ENABLE_SYNCPROV="${LDAP_ENABLE_SYNCPROV:-no}"
 export LDAP_SYNCPROV_CHECKPPOINT="${LDAP_SYNCPROV_CHECKPPOINT:-100 10}"
 export LDAP_SYNCPROV_SESSIONLOG="${LDAP_SYNCPROV_SESSIONLOG:-100}"
@@ -114,12 +123,13 @@ for env_var in "${ldap_env_vars[@]}"; do
         fi
     fi
 done
-unset ldap_env_vars
-
 # Setting encrypted admin passwords
-export LDAP_ENCRYPTED_ADMIN_PASSWORD="$(echo -n $LDAP_ADMIN_PASSWORD | slappasswd -n -T /dev/stdin)"
-export LDAP_ENCRYPTED_CONFIG_ADMIN_PASSWORD="$(echo -n $LDAP_CONFIG_ADMIN_PASSWORD | slappasswd -n -T /dev/stdin)"
-export LDAP_ENCRYPTED_ACCESSLOG_ADMIN_PASSWORD="$(echo -n $LDAP_ACCESSLOG_ADMIN_PASSWORD | slappasswd -n -T /dev/stdin)"
+for env_var in "${ldap_env_vars[@]}"; do
+    if [[ -n "${!env_var:-}" ]]; then
+        export "${env_var}_ENCRYPTED=$(printf '%s' "${!env_var}" | slappasswd_pbkdf2)"
+    fi
+done
+unset ldap_env_vars
 EOF
 }
 
@@ -141,6 +151,12 @@ ldap_validate() {
         error "$1"
         error_code=1
     }
+    check_empty_value() {
+        if is_empty_value "${!1}"; then
+            print_validation_error "The $1 environment variable is empty or not set."
+        fi
+    }
+
     for var in LDAP_SKIP_DEFAULT_TREE LDAP_ENABLE_TLS LDAP_ENABLE_PROXYPROTO; do
         if ! is_yes_no_value "${!var}"; then
             print_validation_error "The allowed values for $var are: yes or no"
@@ -165,6 +181,9 @@ ldap_validate() {
         fi
     fi
 
+    check_empty_value "LDAP_ADMIN_PASSWORD"
+    is_boolean_yes "$LDAP_CONFIG_ADMIN_ENABLED" && check_empty_value "LDAP_CONFIG_ADMIN_PASSWORD"
+    is_boolean_yes "$LDAP_ENABLE_ACCESSLOG" && check_empty_value "LDAP_ACCESSLOG_ADMIN_PASSWORD"
     read -r -a users <<< "$(tr ',;' ' ' <<< "${LDAP_USERS}")"
     read -r -a passwords <<< "$(tr ',;' ' ' <<< "${LDAP_PASSWORDS}")"
     if [[ "${#users[@]}" -ne "${#passwords[@]}" ]]; then
@@ -248,7 +267,7 @@ is_ldap_ready() {
 ldap_start_bg() {
     local -r retries="${1:-12}"
     local -r sleep_time="${2:-1}"
-    local -a flags=("-h" "ldap://:${LDAP_PORT_NUMBER}/ ldapi:/// " "-F" "${LDAP_CONF_DIR}/slapd.d" "-d" "$LDAP_LOGLEVEL")
+    local -a flags=("-h" "ldapi:/// " "-F" "${LDAP_CONF_DIR}/slapd.d" "-d" "$LDAP_LOGLEVEL")
 
     if is_ldap_not_running; then
         info "Starting OpenLDAP server in background"
@@ -315,13 +334,14 @@ olcArgsFile: /opt/bitnami/openldap/var/run/slapd.args
 olcPidFile: /opt/bitnami/openldap/var/run/slapd.pid
 
 #
-# Enable pw-sha2 module
+# Enable pw-sha2 & pw-pbkdf2 modules
 #
 dn: cn=module,cn=config
 cn: module
 objectClass: olcModuleList
 olcModulePath: /opt/bitnami/openldap/libexec/openldap
 olcModuleLoad: pw-sha2.so
+olcModuleLoad: pw-pbkdf2.so
 
 #
 # Schema settings
@@ -375,6 +395,8 @@ olcMonitoring: FALSE
 olcDbDirectory:	/bitnami/openldap/data
 olcDbIndex: objectClass eq,pres
 olcDbIndex: ou,cn,mail,surname,givenname eq,pres,sub
+olcAccess: to attrs=userPassword by self write by anonymous auth by * none
+olcAccess: to * by self read by users read by * none
 EOF
 
 }
@@ -399,6 +421,7 @@ ldap_create_online_configuration() {
     else
         debug_execute slapadd "${flags[@]}"
     fi
+    rm -f "${LDAP_SHARE_DIR}/slapd.ldif"
 }
 
 ########################
@@ -426,7 +449,7 @@ olcRootDN: $LDAP_ADMIN_DN
 dn: olcDatabase={2}mdb,cn=config
 changeType: modify
 add: olcRootPW
-olcRootPW: $LDAP_ENCRYPTED_ADMIN_PASSWORD
+olcRootPW: ${LDAP_ADMIN_PASSWORD_ENCRYPTED:-}
 
 dn: olcDatabase={1}monitor,cn=config
 changetype: modify
@@ -444,10 +467,11 @@ olcRootDN: $LDAP_CONFIG_ADMIN_DN
 dn: olcDatabase={0}config,cn=config
 changetype: modify
 add: olcRootPW
-olcRootPW: $LDAP_ENCRYPTED_CONFIG_ADMIN_PASSWORD
+olcRootPW: ${LDAP_CONFIG_ADMIN_PASSWORD_ENCRYPTED:-}
 EOF
     fi
     debug_execute ldapmodify -Y EXTERNAL -H "ldapi:///" -f "${LDAP_SHARE_DIR}/admin.ldif"
+    rm -f "${LDAP_SHARE_DIR}/admin.ldif"
 }
 
 ########################
@@ -520,7 +544,11 @@ ldap_add_custom_schema() {
 #########################
 ldap_add_custom_schemas() {
     info "Adding custom schemas : $LDAP_CUSTOM_SCHEMA_DIR ..."
-    find "$LDAP_CUSTOM_SCHEMA_DIR" -maxdepth 1 \( -type f -o -type l \) -iname '*.ldif' -print0 | sort -z | xargs --null -I{} bash -c ". /opt/bitnami/scripts/libos.sh && debug_execute slapadd -F \"$LDAP_ONLINE_CONF_DIR\" -n 0 -l {}"
+
+    while IFS= read -r -d '' schema_file; do
+        debug_execute ldapadd -f "$schema_file" -H 'ldapi:///' -D "$LDAP_CONFIG_ADMIN_DN" -w "$LDAP_CONFIG_ADMIN_PASSWORD"
+    done < <(find "$LDAP_CUSTOM_SCHEMA_DIR" -maxdepth 1 \( -type f -o -type l \) -iname '*.ldif' -print0 | sort -z)
+
     ldap_stop
     while is_ldap_running; do sleep 1; done
     ldap_start_bg
@@ -576,7 +604,7 @@ sn: Bar$((index + 1 ))
 objectClass: inetOrgPerson
 objectClass: posixAccount
 objectClass: shadowAccount
-userPassword: ${passwords[$index]}
+userPassword: $(printf '%s' "${passwords[$index]}" | slappasswd_pbkdf2)
 uid: $user
 uidNumber: $((index + 1000 ))
 gidNumber: $((index + 1000 ))
@@ -600,6 +628,7 @@ EOF
     done
 
     debug_execute ldapadd -f "${LDAP_SHARE_DIR}/tree.ldif" -H "ldapi:///" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD"
+    rm -f "${LDAP_SHARE_DIR}/tree.ldif"
 }
 
 ########################
@@ -614,7 +643,10 @@ EOF
 ldap_add_custom_ldifs() {
     info "Loading custom LDIF files..."
     warn "Ignoring LDAP_USERS, LDAP_PASSWORDS, LDAP_USER_OU, LDAP_GROUP_OU and LDAP_GROUP environment variables..."
-    find "$LDAP_CUSTOM_LDIF_DIR" -maxdepth 1 \( -type f -o -type l \) -iname '*.ldif' -print0 | sort -z | xargs --null -I{} bash -c ". /opt/bitnami/scripts/libos.sh && debug_execute ldapadd -f {} -H 'ldapi:///' -D \"$LDAP_ADMIN_DN\" -w \"$LDAP_ADMIN_PASSWORD\""
+
+    while IFS= read -r -d '' ldif_file; do
+       debug_execute ldapadd -f "$ldif_file" -H 'ldapi:///' -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD"
+    done < <(find "$LDAP_CUSTOM_LDIF_DIR" -maxdepth 1 \( -type f -o -type l \) -iname '*.ldif' -print0 | sort -z)
 }
 
 ########################
@@ -772,6 +804,7 @@ olcTLSDHParamFile: $LDAP_TLS_DH_PARAMS_FILE
 EOF
     fi
     debug_execute ldapmodify -Y EXTERNAL -H "ldapi:///" -f "${LDAP_SHARE_DIR}/certs.ldif"
+    rm -f "${LDAP_SHARE_DIR}/certs.ldif"
 }
 
 ########################
@@ -913,7 +946,7 @@ olcDatabase: {3}mdb
 olcDbDirectory: $LDAP_ACCESSLOG_DATA_DIR
 olcSuffix: $LDAP_ACCESSLOG_DB
 olcRootDN: $LDAP_ACCESSLOG_ADMIN_DN
-olcRootPW: $LDAP_ENCRYPTED_ACCESSLOG_ADMIN_PASSWORD
+olcRootPW: ${LDAP_ACCESSLOG_ADMIN_PASSWORD_ENCRYPTED:-}
 olcDbIndex: default eq
 olcDbIndex: entryCSN,objectClass,reqEnd,reqResult,reqStart
 EOF
@@ -934,6 +967,7 @@ olcAccessLogOldAttr: $LDAP_ACCESSLOG_LOGOLDATTR
 EOF
     info "adding accesslog_create_overlay_configuration.ldif"
     debug_execute ldapadd -Q -Y EXTERNAL -H "ldapi:///" -f "${LDAP_SHARE_DIR}/accesslog_create_overlay_configuration.ldif"
+    rm -f "${LDAP_SHARE_DIR}/accesslog_create_overlay_configuration.ldif"
 }
 
 ########################
