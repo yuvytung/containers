@@ -309,9 +309,12 @@ jenkins_add_custom_file() {
     get_plugin_version() {
         local -r pluginpath="${1:?pluginpath is required}"
         local version
-        # Use unzip -p, which is mean to extract files to pipe
-        # https://linux.die.net/man/1/unzip
-        version=$(unzip -p "$pluginpath" META-INF/MANIFEST.MF | grep "^Plugin-Version: " | sed -e 's#^Plugin-Version: ##')
+        # Extract MANIFEST.MF to stdout: prefer 7z if available, fallback to unzip
+        if command -v 7z >/dev/null 2>&1; then
+            version=$(7z e -so "$pluginpath" META-INF/MANIFEST.MF 2>/dev/null | grep "^Plugin-Version: " | sed -e 's#^Plugin-Version: ##')
+        else
+            version=$(unzip -p "$pluginpath" META-INF/MANIFEST.MF 2>/dev/null | grep "^Plugin-Version: " | sed -e 's#^Plugin-Version: ##')
+        fi
         version=${version%%[[:space:]]}
         echo "$version"
     }

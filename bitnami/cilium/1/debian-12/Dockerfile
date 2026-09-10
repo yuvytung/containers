@@ -7,13 +7,13 @@ ARG DOWNLOADS_URL="https://downloads.bitnami.com/files/stacksmith"
 ARG TARGETARCH
 
 LABEL org.opencontainers.image.base.name="docker.io/bitnami/minideb:bookworm" \
-      org.opencontainers.image.created="2026-06-16T13:36:40Z" \
+      org.opencontainers.image.created="2026-09-01T22:26:28Z" \
       org.opencontainers.image.description="Application packaged by Broadcom, Inc." \
       org.opencontainers.image.documentation="https://github.com/bitnami/containers/tree/main/bitnami/cilium/README.md" \
       org.opencontainers.image.source="https://github.com/bitnami/containers/tree/main/bitnami/cilium" \
       org.opencontainers.image.title="cilium" \
       org.opencontainers.image.vendor="Broadcom, Inc." \
-      org.opencontainers.image.version="1.19.5"
+      org.opencontainers.image.version="1.20.1"
 
 ENV HOME="/" \
     OS_ARCH="${TARGETARCH:-amd64}" \
@@ -24,15 +24,15 @@ ENV HOME="/" \
 COPY prebuildfs /
 SHELL ["/bin/bash", "-o", "errexit", "-o", "nounset", "-o", "pipefail", "-c"]
 # Install required system packages and dependencies
-RUN install_packages bash-completion ca-certificates curl iproute2 ipset iptables libgcc-s1 libstdc++6 libtinfo6 nftables procps zlib1g
+RUN install_packages bash-completion ca-certificates curl iproute2 ipset iptables libgcc-s1 libstdc++6 nftables procps zlib1g
 RUN --mount=type=secret,id=downloads_url,env=SECRET_DOWNLOADS_URL \
     DOWNLOADS_URL=${SECRET_DOWNLOADS_URL:-${DOWNLOADS_URL}} ; \
     mkdir -p /tmp/bitnami/pkg/cache/ ; cd /tmp/bitnami/pkg/cache/ || exit 1 ; \
     COMPONENTS=( \
-      "llvm-18.1.8-3-linux-${OS_ARCH}-debian-12" \
-      "gops-0.3.29-8-linux-${OS_ARCH}-debian-12" \
+      "llvm-23.1.0-0-linux-${OS_ARCH}-debian-12" \
+      "gops-0.3.29-13-linux-${OS_ARCH}-debian-12" \
       "bpftool-7.7.0-0-linux-${OS_ARCH}-debian-12" \
-      "cilium-1.19.5-0-linux-${OS_ARCH}-debian-12" \
+      "cilium-1.20.1-3-linux-${OS_ARCH}-debian-12" \
     ) ; \
     for COMPONENT in "${COMPONENTS[@]}"; do \
       if [ ! -f "${COMPONENT}.tar.gz" ]; then \
@@ -50,9 +50,9 @@ RUN uninstall_packages curl
 
 COPY rootfs /
 RUN /opt/bitnami/scripts/cilium/postunpack.sh
-ENV APP_VERSION="1.19.5" \
+ENV APP_VERSION="1.20.1" \
     BITNAMI_APP_NAME="cilium" \
-    IMAGE_REVISION="0"
+    IMAGE_REVISION="3"
 
 USER 1001
 ENTRYPOINT [ "/opt/bitnami/scripts/cilium/entrypoint.sh" ]
