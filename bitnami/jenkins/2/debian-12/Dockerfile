@@ -8,13 +8,13 @@ ARG JAVA_EXTRA_SECURITY_DIR="/bitnami/java/extra-security"
 ARG TARGETARCH
 
 LABEL org.opencontainers.image.base.name="docker.io/bitnami/minideb:bookworm" \
-      org.opencontainers.image.created="2026-09-06T19:13:24Z" \
+      org.opencontainers.image.created="2026-11-06T02:50:19Z" \
       org.opencontainers.image.description="Application packaged by Broadcom, Inc." \
       org.opencontainers.image.documentation="https://github.com/bitnami/containers/tree/main/bitnami/jenkins/README.md" \
       org.opencontainers.image.source="https://github.com/bitnami/containers/tree/main/bitnami/jenkins" \
       org.opencontainers.image.title="jenkins" \
       org.opencontainers.image.vendor="Broadcom, Inc." \
-      org.opencontainers.image.version="2.568.3"
+      org.opencontainers.image.version="2.580.2"
 
 ENV HOME="/" \
     OS_ARCH="${TARGETARCH:-amd64}" \
@@ -30,9 +30,9 @@ RUN --mount=type=secret,id=downloads_url,env=SECRET_DOWNLOADS_URL \
     mkdir -p /tmp/bitnami/pkg/cache/ ; cd /tmp/bitnami/pkg/cache/ || exit 1 ; \
     COMPONENTS=( \
       "nss-wrapper-1.1.16-0-linux-${OS_ARCH}-debian-12" \
-      "render-template-1.0.10-4-linux-${OS_ARCH}-debian-12" \
-      "jre-21.0.12-10-2-linux-${OS_ARCH}-debian-12" \
-      "jenkins-2.568.3-0-linux-${OS_ARCH}-debian-12" \
+      "render-template-1.0.10-6-linux-${OS_ARCH}-debian-12" \
+      "jre-21.0.13-35-0-linux-${OS_ARCH}-debian-12" \
+      "jenkins-2.580.2-2-linux-${OS_ARCH}-debian-12" \
     ) ; \
     for COMPONENT in "${COMPONENTS[@]}"; do \
       if [ ! -f "${COMPONENT}.tar.gz" ]; then \
@@ -52,9 +52,9 @@ RUN mkdir -p /usr/share/fonts /etc/fonts/conf.d && if [ -d /opt/bitnami/common/f
 COPY rootfs /
 RUN /opt/bitnami/scripts/java/postunpack.sh
 RUN /opt/bitnami/scripts/jenkins/postunpack.sh
-ENV APP_VERSION="2.568.3" \
+ENV APP_VERSION="2.580.2" \
     BITNAMI_APP_NAME="jenkins" \
-    IMAGE_REVISION="2" \
+    IMAGE_REVISION="3" \
     JAVA_HOME="/opt/bitnami/java" \
     PATH="/opt/bitnami/common/bin:/opt/bitnami/java/bin:$PATH"
 
